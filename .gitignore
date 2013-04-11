@@ -1,0 +1,6 @@
+bin/AndroidManifest.xml
+bin/classes/*
+bin/classes.dex
+bin/dexedLibs/*
+bin/res/*
+bin/resources.ap_

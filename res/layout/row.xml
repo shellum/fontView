@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/white"
+    android:orientation="horizontal" >
+
+    <!-- You can set the hight/width of the FontView, and it will scale the character accordingly
+         The rendered and styled character will be drawn in this view -->
+    <com.finalhack.fontview.FontView
+        android:id="@+id/character"
+        android:layout_width="80dp"
+        android:layout_height="80dp" />
+
+    <!-- This view will be used to show the character's description -->
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+</LinearLayout>
