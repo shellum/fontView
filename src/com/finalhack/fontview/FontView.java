@@ -35,10 +35,10 @@ public class FontView extends ImageView {
 	private int mWidthDifferential;
 	private int mHeightDifferential;
 	private int mForegroundColor;
-	private int mBackgroundColor;
-	private int mOuterColor;
-	private int mHalfColor = NOT_USED;
-	private boolean mBackgroundGradientColor;
+	private int mBackgroundColor = NOT_USED;
+	private int mOuterColor = NOT_USED;
+	private int mBottomHalfColor = NOT_USED;
+	private boolean mHasBackgroundGradient = false;
 	private int mXOffset;
 	private int mYOffset;
 	private double mFontSizeMultiplier = 1.0;
@@ -56,7 +56,7 @@ public class FontView extends ImageView {
 	private Paint mBackgroundPaint;
 	private Paint mBackgroundGradientPaint;
 	private Paint mOuterPaint;
-	private Paint mHalfPaint;
+	private Paint mBottomHalfPaint;
 	private Bitmap mBitmap;
 	private Canvas mCanvas;
 	private ImageType mType;
@@ -143,7 +143,7 @@ public class FontView extends ImageView {
 	 * @param outerColor
 	 * @param type
 	 */
-	public void load(String character, int foregroundColor, int backgroundColor, int outerColor, int halfColor, boolean outerGradient,
+	public void load(String character, int foregroundColor, int backgroundColor, int outerColor, int halfColor, boolean hasBackgroundGradient,
 			ImageType type) {
 		if (mFontLocationType == null)
 			throw new RuntimeException("Please call setFont() before calling load");
@@ -152,8 +152,8 @@ public class FontView extends ImageView {
 		mForegroundColor = foregroundColor;
 		mBackgroundColor = backgroundColor;
 		mOuterColor = outerColor;
-		mHalfColor = halfColor;
-		mBackgroundGradientColor = outerGradient;
+		mBottomHalfColor = halfColor;
+		mHasBackgroundGradient = hasBackgroundGradient;
 		mType = type;
 
 		if (mFontLocationType == LocationType.NETWORK)
@@ -223,13 +223,14 @@ public class FontView extends ImageView {
 		mOuterPaint.setAntiAlias(true);
 
 		// Sometimes there is a bottom half paint color
-		mHalfPaint = new Paint();
-		mHalfPaint.setColor(mHalfColor);
-		mHalfPaint.setAntiAlias(true);
+		mBottomHalfPaint = new Paint();
+		mBottomHalfPaint.setColor(mBottomHalfColor);
+		mBottomHalfPaint.setAntiAlias(true);
 
 		// Sometimes there is a gradient background
 		mBackgroundGradientPaint = new Paint();
-		LinearGradient linearGradient = new LinearGradient(mMidX, TOP, mMidX, mHeight, mBackgroundColor, mHalfColor, Shader.TileMode.REPEAT);
+		LinearGradient linearGradient = new LinearGradient(mMidX, TOP, mMidX, mHeight, mBackgroundColor, mBottomHalfColor,
+				Shader.TileMode.REPEAT);
 		mBackgroundGradientPaint.setDither(false);
 		mBackgroundGradientPaint.setShader(linearGradient);
 
@@ -273,23 +274,23 @@ public class FontView extends ImageView {
 
 		// Draw image type specific parts
 		if (mType == ImageType.SQUARE) {
-			if (mHalfColor == NOT_USED) {
+			if (mBottomHalfColor == NOT_USED) {
 				mCanvas.drawColor(mBackgroundColor);
 			} else {
-				if (mBackgroundGradientColor) {
+				if (mHasBackgroundGradient) {
 					mCanvas.drawRect(new Rect(LEFT, TOP, mWidth, mHeight), mBackgroundGradientPaint);
 				} else {
 					mCanvas.drawRect(new Rect(LEFT, TOP, mWidth, mMidY), mBackgroundPaint);
-					mCanvas.drawRect(new Rect(LEFT, mMidY, mWidth, mHeight), mHalfPaint);
+					mCanvas.drawRect(new Rect(LEFT, mMidY, mWidth, mHeight), mBottomHalfPaint);
 				}
 			}
 		}
 		if (mType == ImageType.CIRCLE) {
 			mCanvas.drawColor(mOuterColor);
-			if (mHalfColor == NOT_USED) {
+			if (mBottomHalfColor == NOT_USED) {
 				mCanvas.drawCircle(mMidX, mMidY, mMidX, mBackgroundPaint);
 			} else {
-				if (mBackgroundGradientColor) {
+				if (mHasBackgroundGradient) {
 					mCanvas.drawCircle(mMidX, mMidY, mMidX, mBackgroundGradientPaint);
 				} else {
 					// Draw the circle's bottom half
@@ -297,7 +298,7 @@ public class FontView extends ImageView {
 							mBackgroundPaint);
 					// Draw the circle's top half
 					mCanvas.drawArc(new RectF(LEFT, TOP, mWidth, mHeight), HALF_CIRCLE_TOP_START, HALF_CIRCLE_SWEEP_DISTANCE, true,
-							mHalfPaint);
+							mBottomHalfPaint);
 				}
 			}
 		}
@@ -371,6 +372,47 @@ public class FontView extends ImageView {
 	 */
 	public void setFontSizeMultiplier(double fontSizeMultiplier) {
 		this.mFontSizeMultiplier = fontSizeMultiplier;
+	}
+
+	/**
+	 * Adds a background color behind the character.
+	 * 
+	 * @param backgroundColor
+	 */
+	public void addBackgroundColor(int backgroundColor) {
+		this.mBackgroundColor = backgroundColor;
+	}
+
+	/**
+	 * Adds an outer color, used behind shapes like circles where the circle background color only
+	 * resides in the circle. The outerColor is the rest of the square that circumscribes the
+	 * circle.
+	 * 
+	 * @param outerColor
+	 */
+	public void addOuterColor(int outerColor) {
+		this.mOuterColor = outerColor;
+	}
+
+	/**
+	 * Adds a color to the bottom half of the shapes background. Is usually used in conjunction with
+	 * setting a background color. Also used to set the second color when turning on a gradient
+	 * background.
+	 * 
+	 * @param halfColor
+	 */
+	public void addBottomHalfColor(int bottomHalfColor) {
+		this.mBottomHalfColor = bottomHalfColor;
+	}
+
+	/**
+	 * Makes the background behind the character a gradient. The gradient is based on two colors:
+	 * background and bottomHalfColor.
+	 * 
+	 * @param mHasBackgroundGradient
+	 */
+	public void setBackgroundGradient(boolean mHasBackgroundGradient) {
+		this.mHasBackgroundGradient = mHasBackgroundGradient;
 	}
 
 }

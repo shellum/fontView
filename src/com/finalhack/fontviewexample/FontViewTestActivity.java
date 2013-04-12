@@ -12,6 +12,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.finalhack.fontviewexample.R;
 import com.finalhack.fontview.FontView;
 
 /*
@@ -62,7 +63,6 @@ public class FontViewTestActivity extends Activity {
 			strs.add("Z");
 			strs.add("d");
 			strs.add("\u00fb");
-			strs.add(">");
 			strs.add("&");
 		}
 
