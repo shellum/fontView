@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
 import android.graphics.Rect;
@@ -16,7 +17,7 @@ import android.text.Html;
 import android.util.AttributeSet;
 import android.widget.ImageView;
 
-public class FontView extends ImageView {
+public class FontView extends ImageView { 
 
 	private static final int HALF_CIRCLE_SWEEP_DISTANCE = 180;
 	private static final int HALF_CIRCLE_TOP_START = 180;
@@ -34,10 +35,10 @@ public class FontView extends ImageView {
 	private int textSize;
 	private int mWidthDifferential;
 	private int mHeightDifferential;
-	private int mForegroundColor;
-	private int mBackgroundColor = NOT_USED;
-	private int mOuterColor = NOT_USED;
-	private int mBottomHalfColor = NOT_USED;
+	private Integer mForegroundColor = null;
+	private Integer mBackgroundColor = null;
+	private Integer mOuterColor = null;
+	private Integer mBottomHalfColor = null;
 	private boolean mHasBackgroundGradient = false;
 	private int mXOffset;
 	private int mYOffset;
@@ -130,6 +131,13 @@ public class FontView extends ImageView {
 	 * @param assetLocation
 	 */
 	public void setFont(String assetLocation) {
+		// We need to null out set colors for cases like ListView row recycling
+		mForegroundColor = null;
+		mOuterColor = null;
+		mBackgroundColor = null;
+		mBottomHalfColor = null;
+		mHasBackgroundGradient = false;
+		
 		mFontLocation = assetLocation;
 		mFontLocationType = LocationType.ASSET;
 	}
@@ -199,34 +207,45 @@ public class FontView extends ImageView {
 		// Setup our glyph color
 		mForegroundPaint = new Paint();
 		mForegroundPaint.setTextSize(textSize);
-		mForegroundPaint.setColor(mForegroundColor);
+		if (mForegroundColor != null)
+			mForegroundPaint.setColor(mForegroundColor);
+		else
+			mForegroundPaint.setColor(Color.BLACK);
 		mForegroundPaint.setAntiAlias(true);
 		mForegroundPaint.setTypeface(mTypeFace);
 		Paint.FontMetrics metrics = new Paint.FontMetrics();
 		mForegroundPaint.getFontMetrics(metrics);
 
 		// Setup our glyph background
-		mBackgroundPaint = new Paint();
-		mBackgroundPaint.setColor(mBackgroundColor);
-		mBackgroundPaint.setAntiAlias(true);
+		if (mBackgroundColor != null) {
+			mBackgroundPaint = new Paint();
+			mBackgroundPaint.setColor(mBackgroundColor);
+			mBackgroundPaint.setAntiAlias(true);
+		}
 
 		// Sometimes there is a surrounding color which gives the appearance of clipping/shaping
 		// This will be the background color for that region.
-		mOuterPaint = new Paint();
-		mOuterPaint.setColor(mOuterColor);
-		mOuterPaint.setAntiAlias(true);
+		if (mOuterColor != null) {
+			mOuterPaint = new Paint();
+			mOuterPaint.setColor(mOuterColor);
+			mOuterPaint.setAntiAlias(true);
+		}
 
 		// Sometimes there is a bottom half paint color
-		mBottomHalfPaint = new Paint();
-		mBottomHalfPaint.setColor(mBottomHalfColor);
-		mBottomHalfPaint.setAntiAlias(true);
+		if (mBottomHalfColor != null) {
+			mBottomHalfPaint = new Paint();
+			mBottomHalfPaint.setColor(mBottomHalfColor);
+			mBottomHalfPaint.setAntiAlias(true);
+		}
 
 		// Sometimes there is a gradient background
-		mBackgroundGradientPaint = new Paint();
-		LinearGradient linearGradient = new LinearGradient(mMidX, TOP, mMidX, mHeight, mBackgroundColor, mBottomHalfColor,
-				Shader.TileMode.REPEAT);
-		mBackgroundGradientPaint.setDither(false);
-		mBackgroundGradientPaint.setShader(linearGradient);
+		if (mBackgroundColor != null && mBottomHalfColor != null) {
+			mBackgroundGradientPaint = new Paint();
+			LinearGradient linearGradient = new LinearGradient(mMidX, TOP, mMidX, mHeight, mBackgroundColor, mBottomHalfColor,
+					Shader.TileMode.REPEAT);
+			mBackgroundGradientPaint.setDither(false);
+			mBackgroundGradientPaint.setShader(linearGradient);
+		}
 
 		// Setup our canvas
 		mBitmap = Bitmap.createBitmap(mWidth, mHeight, Bitmap.Config.ARGB_8888);
@@ -266,14 +285,11 @@ public class FontView extends ImageView {
 		// Calculate glyph metrics we need
 		setupImage();
 
-		if (mCharacter.equals("A")) {
-			int u=9;
-		}
-		
 		// Draw image type specific parts
 		if (mType == ImageType.SQUARE) {
-			if (mBottomHalfColor == NOT_USED) {
-				mCanvas.drawColor(mBackgroundColor);
+			if (mBottomHalfColor == null) {
+				if (mBackgroundColor != null)
+					mCanvas.drawColor(mBackgroundColor);
 			} else {
 				if (mHasBackgroundGradient) {
 					mCanvas.drawRect(new Rect(LEFT, TOP, mWidth, mHeight), mBackgroundGradientPaint);
@@ -285,8 +301,9 @@ public class FontView extends ImageView {
 		}
 		if (mType == ImageType.CIRCLE) {
 			mCanvas.drawColor(mOuterColor);
-			if (mBottomHalfColor == NOT_USED) {
-				mCanvas.drawCircle(mMidX, mMidY, mMidX, mBackgroundPaint);
+			if (mBottomHalfColor == null) {
+				if (mBackgroundColor != null)
+					mCanvas.drawCircle(mMidX, mMidY, mMidX, mBackgroundPaint);
 			} else {
 				if (mHasBackgroundGradient) {
 					mCanvas.drawCircle(mMidX, mMidY, mMidX, mBackgroundGradientPaint);

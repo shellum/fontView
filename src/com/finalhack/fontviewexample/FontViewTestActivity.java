@@ -12,7 +12,6 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.finalhack.fontviewexample.R;
 import com.finalhack.fontview.FontView;
 
 /*
@@ -152,41 +151,40 @@ public class FontViewTestActivity extends Activity {
 
 			// Draw seemingly random sequences of shape/color combinations
 			if (position % 5 == 0) {
-				fontView.addForegroundColor(red)
-				.addBackgroundColor(white)
-				.addOuterColor(white)
-				.load(character, FontView.ImageType.CIRCLE);
+				fontView.addForegroundColor(red);
+				fontView.addBackgroundColor(white);
+				fontView.addOuterColor(white);
+				fontView.load(character, FontView.ImageType.CIRCLE);
 			}
 			else if (position % 4 == 0) {
-				fontView.addForegroundColor(white)
-				.addBackgroundColor(lightBlue)
-				.addOuterColor(white)
-				.addBottomHalfColor(darkBlue)
-				.load(character, FontView.ImageType.CIRCLE);
+				fontView.addForegroundColor(white);
+				fontView.addBackgroundColor(lightBlue);
+				fontView.addOuterColor(white);
+				fontView.addBottomHalfColor(darkBlue);
+				fontView.load(character, FontView.ImageType.CIRCLE);
 			}
 			else if (position % 3 == 0) {
-				fontView.addForegroundColor(white)
-				.addBackgroundColor(green)
-				.addOuterColor(white)
-				.addBottomHalfColor(black)
-				.setBackgroundGradient(true)
-				.load(character, FontView.ImageType.CIRCLE);
+				fontView.addForegroundColor(white);
+				fontView.addBackgroundColor(green);
+				fontView.addOuterColor(white);
+				fontView.addBottomHalfColor(black);
+				fontView.load(character, FontView.ImageType.CIRCLE);
 			}
 			else if (position % 2 == 0) {
-				fontView.addForegroundColor(yellow)
-				.addBackgroundColor(red)
-				.addOuterColor(white)
-				.load(character, FontView.ImageType.SQUARE);
+				fontView.addForegroundColor(yellow);
+				fontView.addBackgroundColor(red);
+				fontView.addOuterColor(white);
+				fontView.load(character, FontView.ImageType.SQUARE);
 			}
 			else {
-				fontView.addForegroundColor(white)
-				.addBackgroundColor(darkBlue)
-				.addOuterColor(white)
-				.addBottomHalfColor(lightBlue)
-				.setBackgroundGradient(true)
-				.load(character, FontView.ImageType.SQUARE);
+				fontView.addForegroundColor(white);
+				fontView.addBackgroundColor(darkBlue);
+				fontView.addOuterColor(white);
+				fontView.addBottomHalfColor(lightBlue);
+				fontView.setBackgroundGradient(true);
+				fontView.load(character, FontView.ImageType.SQUARE);
 			}
-
+			
 			// Show the corresponding text character
 			textView.setText(character);
 
