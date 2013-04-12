@@ -143,17 +143,11 @@ public class FontView extends ImageView {
 	 * @param outerColor
 	 * @param type
 	 */
-	public void load(String character, int foregroundColor, int backgroundColor, int outerColor, int halfColor, boolean hasBackgroundGradient,
-			ImageType type) {
+	public void load(String character, ImageType type) {
 		if (mFontLocationType == null)
 			throw new RuntimeException("Please call setFont() before calling load");
 
 		mCharacter = character;
-		mForegroundColor = foregroundColor;
-		mBackgroundColor = backgroundColor;
-		mOuterColor = outerColor;
-		mBottomHalfColor = halfColor;
-		mHasBackgroundGradient = hasBackgroundGradient;
 		mType = type;
 
 		if (mFontLocationType == LocationType.NETWORK)
@@ -272,6 +266,10 @@ public class FontView extends ImageView {
 		// Calculate glyph metrics we need
 		setupImage();
 
+		if (mCharacter.equals("A")) {
+			int u=9;
+		}
+		
 		// Draw image type specific parts
 		if (mType == ImageType.SQUARE) {
 			if (mBottomHalfColor == NOT_USED) {
@@ -350,18 +348,22 @@ public class FontView extends ImageView {
 	 * Fine tune glyph placement on the x-axis
 	 * 
 	 * @param xOffset
+	 * @return fontView
 	 */
-	public void setXOffset(int xOffset) {
+	public FontView setXOffset(int xOffset) {
 		mXOffset = xOffset;
+		return this;
 	}
 
 	/**
 	 * Fine tune glyph placement on the y-axis
 	 * 
 	 * @param yOffset
+	 * @return fontView
 	 */
-	public void setYOffset(int yOffset) {
+	public FontView setYOffset(int yOffset) {
 		mYOffset = yOffset;
+		return this;
 	}
 
 	/**
@@ -369,18 +371,33 @@ public class FontView extends ImageView {
 	 * 
 	 * @param fontSizeMultiplier
 	 *            (1.1=10% bigger, 0.9=10% smaller)
+	 * @return fontView
 	 */
-	public void setFontSizeMultiplier(double fontSizeMultiplier) {
+	public FontView setFontSizeMultiplier(double fontSizeMultiplier) {
 		this.mFontSizeMultiplier = fontSizeMultiplier;
+		return this;
 	}
 
 	/**
 	 * Adds a background color behind the character.
 	 * 
 	 * @param backgroundColor
+	 * @return fontView
 	 */
-	public void addBackgroundColor(int backgroundColor) {
+	public FontView addBackgroundColor(int backgroundColor) {
 		this.mBackgroundColor = backgroundColor;
+		return this;
+	}
+
+	/**
+	 * Adds a foreground (character) color
+	 * 
+	 * @param foregroundColor
+	 * @return fontView
+	 */
+	public FontView addForegroundColor(int foregroundColor) {
+		this.mForegroundColor = foregroundColor;
+		return this;
 	}
 
 	/**
@@ -389,9 +406,11 @@ public class FontView extends ImageView {
 	 * circle.
 	 * 
 	 * @param outerColor
+	 * @return fontView
 	 */
-	public void addOuterColor(int outerColor) {
+	public FontView addOuterColor(int outerColor) {
 		this.mOuterColor = outerColor;
+		return this;
 	}
 
 	/**
@@ -400,19 +419,23 @@ public class FontView extends ImageView {
 	 * background.
 	 * 
 	 * @param halfColor
+	 * @return fontView
 	 */
-	public void addBottomHalfColor(int bottomHalfColor) {
+	public FontView addBottomHalfColor(int bottomHalfColor) {
 		this.mBottomHalfColor = bottomHalfColor;
+		return this;
 	}
 
 	/**
 	 * Makes the background behind the character a gradient. The gradient is based on two colors:
-	 * background and bottomHalfColor.
+	 * background and bottomHalfColor
 	 * 
 	 * @param mHasBackgroundGradient
+	 * @return fontView
 	 */
-	public void setBackgroundGradient(boolean mHasBackgroundGradient) {
+	public FontView setBackgroundGradient(boolean mHasBackgroundGradient) {
 		this.mHasBackgroundGradient = mHasBackgroundGradient;
+		return this;
 	}
 
 }

@@ -151,16 +151,41 @@ public class FontViewTestActivity extends Activity {
 			fontView.setFontSizeMultiplier(0.8);
 
 			// Draw seemingly random sequences of shape/color combinations
-			if (position % 5 == 0)
-				fontView.load(character, red, yellow, white, FontView.NOT_USED, false, FontView.ImageType.CIRCLE);
-			else if (position % 4 == 0)
-				fontView.load(character, white, lightBlue, white, darkBlue, false, FontView.ImageType.CIRCLE);
-			else if (position % 3 == 0)
-				fontView.load(character, white, green, white, black, true, FontView.ImageType.CIRCLE);
-			else if (position % 2 == 0)
-				fontView.load(character, yellow, red, 0, FontView.NOT_USED, false, FontView.ImageType.SQUARE);
-			else
-				fontView.load(character, white, darkBlue, 0, lightBlue, true, FontView.ImageType.SQUARE);
+			if (position % 5 == 0) {
+				fontView.addForegroundColor(red)
+				.addBackgroundColor(white)
+				.addOuterColor(white)
+				.load(character, FontView.ImageType.CIRCLE);
+			}
+			else if (position % 4 == 0) {
+				fontView.addForegroundColor(white)
+				.addBackgroundColor(lightBlue)
+				.addOuterColor(white)
+				.addBottomHalfColor(darkBlue)
+				.load(character, FontView.ImageType.CIRCLE);
+			}
+			else if (position % 3 == 0) {
+				fontView.addForegroundColor(white)
+				.addBackgroundColor(green)
+				.addOuterColor(white)
+				.addBottomHalfColor(black)
+				.setBackgroundGradient(true)
+				.load(character, FontView.ImageType.CIRCLE);
+			}
+			else if (position % 2 == 0) {
+				fontView.addForegroundColor(yellow)
+				.addBackgroundColor(red)
+				.addOuterColor(white)
+				.load(character, FontView.ImageType.SQUARE);
+			}
+			else {
+				fontView.addForegroundColor(white)
+				.addBackgroundColor(darkBlue)
+				.addOuterColor(white)
+				.addBottomHalfColor(lightBlue)
+				.setBackgroundGradient(true)
+				.load(character, FontView.ImageType.SQUARE);
+			}
 
 			// Show the corresponding text character
 			textView.setText(character);
