@@ -17,7 +17,7 @@ import android.text.Html;
 import android.util.AttributeSet;
 import android.widget.ImageView;
 
-public class FontView extends ImageView { 
+public class FontView extends ImageView {
 
 	private static final int HALF_CIRCLE_SWEEP_DISTANCE = 180;
 	private static final int HALF_CIRCLE_TOP_START = 180;
@@ -61,6 +61,9 @@ public class FontView extends ImageView {
 	private Bitmap mBitmap;
 	private Canvas mCanvas;
 	private ImageType mType;
+	
+	//Track when the last cache update for the font file was
+	private long lastUpdated = 0;
 
 	// A safe context
 	private Context mApplicationContext;
@@ -137,7 +140,7 @@ public class FontView extends ImageView {
 		mBackgroundColor = null;
 		mBottomHalfColor = null;
 		mHasBackgroundGradient = false;
-		
+
 		mFontLocation = assetLocation;
 		mFontLocationType = LocationType.ASSET;
 	}
@@ -285,29 +288,51 @@ public class FontView extends ImageView {
 		// Calculate glyph metrics we need
 		setupImage();
 
+		// This takes a while to read through, but is optimized for running rather than reading
+
 		// Draw image type specific parts
+
+		// For squares...
 		if (mType == ImageType.SQUARE) {
+			// Is the background a solid color?
 			if (mBottomHalfColor == null) {
+				// Is there a background color?
 				if (mBackgroundColor != null)
 					mCanvas.drawColor(mBackgroundColor);
-			} else {
+
+			}
+			// If the background is not a solid color...
+			else {
+				// Is it a gradient?
 				if (mHasBackgroundGradient) {
 					mCanvas.drawRect(new Rect(LEFT, TOP, mWidth, mHeight), mBackgroundGradientPaint);
-				} else {
+				}
+				// Is it split (non-gradient)?
+				else {
 					mCanvas.drawRect(new Rect(LEFT, TOP, mWidth, mMidY), mBackgroundPaint);
 					mCanvas.drawRect(new Rect(LEFT, mMidY, mWidth, mHeight), mBottomHalfPaint);
 				}
 			}
 		}
+
+		// Do the same for circles...
 		if (mType == ImageType.CIRCLE) {
-			mCanvas.drawColor(mOuterColor);
+			// Is there a color outside the circle?
+			if (mOuterColor != null)
+				mCanvas.drawColor(mOuterColor);
+			// Is the background a solid color?
 			if (mBottomHalfColor == null) {
+				// Is there a background color?
 				if (mBackgroundColor != null)
 					mCanvas.drawCircle(mMidX, mMidY, mMidX, mBackgroundPaint);
+				// If the background is not a solid color...
 			} else {
+				// Is it a gradient?
 				if (mHasBackgroundGradient) {
 					mCanvas.drawCircle(mMidX, mMidY, mMidX, mBackgroundGradientPaint);
-				} else {
+				}
+				// Is it split(non-gradient)?
+				else {
 					// Draw the circle's bottom half
 					mCanvas.drawArc(new RectF(LEFT, TOP, mWidth, mHeight), HALF_CIRCLE_BOTTOM_START, HALF_CIRCLE_SWEEP_DISTANCE, true,
 							mBackgroundPaint);
