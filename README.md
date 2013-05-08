@@ -18,8 +18,11 @@ Both the example .apk and fontview.jar are available in the bin/ directory.
 	// -Network locations (http url)
 	// -Java/Android File objects
 	// -Android Assets
-	fontView.setFont("fonts/font.ttf");
-	// fontView.setFont("http://some.network.location.com/badges.ttf", false);
+	fontView.setupFont("fonts/font.ttf", character, FontView.ImageType.CIRCLE);
+	// fontView.setFont("http://some.network.location.com/badges.ttf", false, character, FontView.ImageType.CIRCLE);
+
+	// Useful for recycling to clean out all settings
+	fontView.resetDecorators();
 
 	// Some configuration explination
 	// To style the character you can choose:
@@ -38,6 +41,8 @@ Both the example .apk and fontview.jar are available in the bin/ directory.
 	// Font size can be fine tuned as well
 	fontView.setFontSizeMultiplier(0.8);
 
-	// Load and show the character and configuration
-	fontView.load(character, red, yellow, white, FontView.NOT_USED, false, FontView.ImageType.CIRCLE);
+	// Load and show the character and configuration using the decoration pattern
+        fontView.addForegroundColor(red);
+        fontView.addBackgroundColor(white);
+        fontView.addOuterColor(white);
 ```
