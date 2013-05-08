@@ -4,3 +4,4 @@ bin/classes.dex
 bin/dexedLibs/*
 bin/res/*
 bin/resources.ap_
+.settings
