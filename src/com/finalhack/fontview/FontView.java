@@ -15,9 +15,9 @@ import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.text.Html;
 import android.util.AttributeSet;
-import android.widget.ImageView;
+import android.view.View;
 
-public class FontView extends ImageView {
+public class FontView extends View {
 
     private static final int HALF_CIRCLE_SWEEP_DISTANCE = 180;
     private static final int HALF_CIRCLE_TOP_START = 180;
@@ -159,13 +159,15 @@ public class FontView extends ImageView {
         mWidth = getWidth();
         mExternalCanvas = canvas;
 
-        // If there is a network request...
-        if (mFontLocationType == LocationType.NETWORK)
+        // Are we drawing in a layout preview?
+        if (mFontLocationType == null)
+            mExternalCanvas.drawColor(Color.DKGRAY);
+        // If we haven't downloaded the font yet and there is a network request...
+        else if (!FontNetworkTask.DOWNLOADED && mFontLocationType == LocationType.NETWORK)
             new FontNetworkTask(mApplicationContext, mFontReceiver, mFontLocation).execute();
         // Otherwise, we must already have the data so keep processing without delay
         else
-            internalUpdate();
-
+            createTypeface();
     }
 
     /**
@@ -181,22 +183,30 @@ public class FontView extends ImageView {
     }
 
     /**
-     * Do not call. Called by caching mechanism to load the cached font and begin drawing. Cache the
-     * font by pulling it from one of the font location type locations
+     * Do not call. Called by caching mechanism to load the cached font and begin drawing. 
+     * This is called when a font network task has completed to ensure that the new data is drawn.
      */
     public void internalUpdate() {
+        createTypeface();
+        requestLayout();
+    }
+
+    /**
+     * Create the TypeFace we need from the correct source
+     */
+    private void createTypeface() {
         if (mTypeFace == null) {
             switch (mFontLocationType) {
-                case NETWORK:
-                    mTypeFace = Typeface.createFromFile(new File(mApplicationContext.getExternalFilesDir(null),
-                            hashUrlToFilename(mFontLocation)));
-                    break;
-                case FILE:
-                    mTypeFace = Typeface.createFromFile(mFontFile);
-                    break;
-                case ASSET:
-                    mTypeFace = Typeface.createFromAsset(mApplicationContext.getAssets(), mFontLocation);
-                    break;
+            case NETWORK:
+                mTypeFace = Typeface.createFromFile(new File(mApplicationContext.getExternalFilesDir(null),
+                        hashUrlToFilename(mFontLocation)));
+                break;
+            case FILE:
+                mTypeFace = Typeface.createFromFile(mFontFile);
+                break;
+            case ASSET:
+                mTypeFace = Typeface.createFromAsset(mApplicationContext.getAssets(), mFontLocation);
+                break;
             }
         }
 
@@ -272,8 +282,10 @@ public class FontView extends ImageView {
 
         // Sometimes, glyphs have extra padding. We want to take into account
         // the maximum padding available
-        int width = (int) mForegroundPaint.measureText(Html.fromHtml(mCharacter)
-                .toString());
+        // Just in case no character was given...
+        if (mCharacter == null)
+            mCharacter = "";
+        int width = (int) mForegroundPaint.measureText(Html.fromHtml(mCharacter).toString());
 
         // The width differential will be the starting x for drawing the glyph
         // This will be the center of the view offset by half of the glyph width
@@ -350,19 +362,21 @@ public class FontView extends ImageView {
                 }
                 // Is it split(non-gradient)?
                 else {
+                    // Draw the circle's top half
+                    // Use a divisibility offset because if the radius is odd, or rounded odd, there will be a non-drawn line between the two circle halves.
+                    final int divisibilityOffset = 2;
+                    mExternalCanvas.drawArc(new RectF(LEFT, TOP, mWidth, mHeight + divisibilityOffset), HALF_CIRCLE_TOP_START, HALF_CIRCLE_SWEEP_DISTANCE, true,
+                            mBackgroundPaint);
+
                     // Draw the circle's bottom half
                     mExternalCanvas.drawArc(new RectF(LEFT, TOP, mWidth, mHeight), HALF_CIRCLE_BOTTOM_START, HALF_CIRCLE_SWEEP_DISTANCE,
-                            true, mBackgroundPaint);
-                    // Draw the circle's top half
-                    mExternalCanvas.drawArc(new RectF(LEFT, TOP, mWidth, mHeight), HALF_CIRCLE_TOP_START, HALF_CIRCLE_SWEEP_DISTANCE, true,
-                            mBottomHalfPaint);
+                            true, mBottomHalfPaint);
                 }
             }
         }
 
         // Draw the glyph
-        mExternalCanvas.drawText(Html.fromHtml(mCharacter)
-                .toString(), mWidthDifferential, mHeightDifferential, mForegroundPaint);
+        mExternalCanvas.drawText(Html.fromHtml(mCharacter).toString(), mWidthDifferential, mHeightDifferential, mForegroundPaint);
     }
 
     // Convenience classes for tracking mutable attributes

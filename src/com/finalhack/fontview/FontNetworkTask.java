@@ -20,7 +20,7 @@ public class FontNetworkTask extends AsyncTask<Integer, Integer, Integer> {
 	// Tag whether we've tried to download this before
 	// Currently, the app will need to be restated to re-download the font (for updates)
 	// TODO: add a timing mechanism for pulling down the font, or implement a changed check
-	private static Boolean DOWNLOADED = false;
+	public static Boolean DOWNLOADED = false;
 
 	// Save off basic contextual information we'll get from a constructor
 	private Context mApplicationContext;
@@ -63,8 +63,10 @@ public class FontNetworkTask extends AsyncTask<Integer, Integer, Integer> {
 				// Stream the data in
 				InputStream inputStream = connection.getInputStream();
 				byte[] buffer = new byte[BUFFER_SIZE];
-				while (inputStream.read(buffer) != -1) {
-					fos.write(buffer);
+				int read;
+				while ((read = inputStream.read(buffer)) != -1) {
+				    //Make sure we limit the buffer bytes we're writing, to those we just read
+					fos.write(buffer, 0, read);
 				}
 				// Cleanup
 				fos.close();
