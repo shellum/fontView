@@ -19,8 +19,6 @@ import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.View;
 
-import com.finalhack.fontviewexample.BuildConfig;
-
 public class FontView extends View {
 
     private static final int HALF_CIRCLE_SWEEP_DISTANCE = 180;
@@ -240,7 +238,7 @@ public class FontView extends View {
                             mTypeFace = Typeface.createFromFile(fontFile);
                         } catch (Exception e) {
                             // Bad font file
-                            if (BuildConfig.DEBUG) Log.d(this.getClass().getSimpleName(), "Bad font file");
+                            if (mDebugEnabled) Log.d(this.getClass().getSimpleName(), "Bad font file");
                         }
                     break;
                 case FILE:
