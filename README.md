@@ -13,6 +13,11 @@ Both the example .apk and fontview.jar are available in the bin/ directory.
 	int yellow = getResources().getColor(R.color.yellow);
 	int white = getResources().getColor(R.color.white);
 
+	// Allow a font to be pre-fetched instead of lazy loaded
+        FontView.preFetchNetworkFont(getApplicationContext(), Constants.REMOTE_FONT);
+        // Graphically depict draw time in milliseconds, and output mode debug info to logcat
+        FontView.enableDebugging(IMAGE_DEBUGGING);
+
 	// Initialize the FontView
 	// A font can be pulled and cached from:
 	// -Network locations (http url)
