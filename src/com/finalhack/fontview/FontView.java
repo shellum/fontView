@@ -9,13 +9,17 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.LinearGradient;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.Shader;
 import android.graphics.Typeface;
-import android.text.Html;
 import android.util.AttributeSet;
+import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.View;
+
+import com.finalhack.fontviewexample.BuildConfig;
 
 public class FontView extends View {
 
@@ -46,6 +50,10 @@ public class FontView extends View {
     private int mYOffset;
     private double mFontSizeMultiplier = 1.0;
 
+    /* package */static boolean mDebugEnabled = false;
+    private int mDebugIndicatorWidth = 20;
+    private DisplayMetrics mDisplayMetrics = getResources().getDisplayMetrics();
+
     // The character we're writing
     // This is a String to allow HTML entities
     private String mCharacter;
@@ -55,11 +63,12 @@ public class FontView extends View {
     private File mFontFile;
 
     // Color and drawing resources
-    private Paint mForegroundPaint;
-    private Paint mBackgroundPaint;
-    private Paint mBackgroundGradientPaint;
-    private Paint mOuterPaint;
-    private Paint mBottomHalfPaint;
+    private Paint mForegroundPaint = new Paint();
+    private Paint mBackgroundPaint = new Paint();
+    private Paint mBackgroundGradientPaint = new Paint();
+    private Paint mOuterPaint = new Paint();
+    private Paint mBottomHalfPaint = new Paint();
+    private Paint mDebugPaint = new Paint();
     private Canvas mExternalCanvas;
     private ImageType mType;
 
@@ -69,12 +78,22 @@ public class FontView extends View {
     // IPC callback hand off mechanism
     public FontReceiver mFontReceiver = new FontReceiver(getHandler(), this);
 
+    // Cache some Rect objects to avoid excessive allocation
+    private Rect squareRect = null;
+    private Rect squareRectA = null;
+    private Rect squareRectB = null;
+    private RectF circleRectA = null;
+    private RectF circleRectB = null;
+
+    // Pre-allocate...
+    private Paint.FontMetrics metrics = new Paint.FontMetrics();
+
     // Cache our font
     private static Typeface mTypeFace;
 
     /**
      * Required constructor from super class
-     * 
+     *
      * @param context
      * @param attrs
      * @param defStyle
@@ -86,7 +105,7 @@ public class FontView extends View {
 
     /**
      * Required constructor from super class
-     * 
+     *
      * @param context
      * @param attrs
      */
@@ -97,7 +116,7 @@ public class FontView extends View {
 
     /**
      * Required constructor from super class
-     * 
+     *
      * @param context
      */
     public FontView(Context context) {
@@ -107,7 +126,7 @@ public class FontView extends View {
 
     /**
      * When needed, pull the font from a File on the file system
-     * 
+     *
      * @param fontFile
      */
     public void setupFont(File fontFile, String character, ImageType type) {
@@ -119,7 +138,7 @@ public class FontView extends View {
 
     /**
      * WHen needed, pull the font from a network location
-     * 
+     *
      * @param networkLocation
      * @param mIsNetworkHttps
      */
@@ -132,7 +151,7 @@ public class FontView extends View {
 
     /**
      * When needed, pull the font from the apk's assets folder
-     * 
+     *
      * @param assetLocation
      */
     public void setupFont(String assetLocation, String character, ImageType type) {
@@ -143,31 +162,45 @@ public class FontView extends View {
     }
 
     /**
-     * Draws font data on the calling view Call this
-     * 
-     * @param character
-     * @param foregroundColor
-     * @param backgroundColor
-     * @param outerColor
-     * @param type
+     * Normally network fonts are lazy loaded. Call this to get the font before it is needed, which
+     * could cut down on image display delay.
      */
+    public static void preFetchNetworkFont(Context applicationContext, String fontLocation) {
+        new FontNetworkTask(applicationContext, null, fontLocation).execute();
+    }
+
+    /**
+     * Turn on extra debugging output
+     *
+     * @param debugEnabled
+     */
+    public static void enableDebugging(boolean debugEnabled) {
+        mDebugEnabled = debugEnabled;
+    }
+
     // Suppress the Async task warning on onDraw. It's fine.
     @SuppressLint("DrawAllocation")
     @Override
     protected void onDraw(Canvas canvas) {
-        mHeight = getHeight();
-        mWidth = getWidth();
         mExternalCanvas = canvas;
 
         // Are we drawing in a layout preview?
-        if (mFontLocationType == null)
+        if (isInEditMode()) {
+            Paint editPaint = new Paint();
+            editPaint.setAntiAlias(true);
             mExternalCanvas.drawColor(Color.DKGRAY);
+        }
         // If we haven't downloaded the font yet and there is a network request...
         else if (!FontNetworkTask.DOWNLOADED && mFontLocationType == LocationType.NETWORK)
             new FontNetworkTask(mApplicationContext, mFontReceiver, mFontLocation).execute();
-        // Otherwise, we must already have the data so keep processing without delay
-        else
+            // Otherwise, we must already have the data so keep processing without delay
+        else {
             createTypeface();
+
+            // Now we have all the data we need.
+            // Draw everything.
+            draw();
+        }
     }
 
     /**
@@ -183,8 +216,8 @@ public class FontView extends View {
     }
 
     /**
-     * Do not call. Called by caching mechanism to load the cached font and begin drawing. 
-     * This is called when a font network task has completed to ensure that the new data is drawn.
+     * Do not call. Called by caching mechanism to load the cached font and begin drawing. This is
+     * called when a font network task has completed to ensure that the new data is drawn.
      */
     public void internalUpdate() {
         createTypeface();
@@ -195,40 +228,38 @@ public class FontView extends View {
      * Create the TypeFace we need from the correct source
      */
     private void createTypeface() {
-        if (mTypeFace == null) {
+        if (mTypeFace == null && mFontLocationType != null) {
             switch (mFontLocationType) {
-            case NETWORK:
-                mTypeFace = Typeface.createFromFile(new File(mApplicationContext.getExternalFilesDir(null),
-                        hashUrlToFilename(mFontLocation)));
-                break;
-            case FILE:
-                mTypeFace = Typeface.createFromFile(mFontFile);
-                break;
-            case ASSET:
-                mTypeFace = Typeface.createFromAsset(mApplicationContext.getAssets(), mFontLocation);
-                break;
+                case NETWORK:
+                    File fontFile = new File(mApplicationContext.getExternalFilesDir(null), hashUrlToFilename(mFontLocation));
+                    // Only process the file if it's not null
+                    if (fontFile != null)
+                        // It's also possible to get a RuntimeException if the font file exists, but
+                        // is bad or empty
+                        try {
+                            mTypeFace = Typeface.createFromFile(fontFile);
+                        } catch (Exception e) {
+                            // Bad font file
+                            if (BuildConfig.DEBUG) Log.d(this.getClass().getSimpleName(), "Bad font file");
+                        }
+                    break;
+                case FILE:
+                    mTypeFace = Typeface.createFromFile(mFontFile);
+                    break;
+                case ASSET:
+                    mTypeFace = Typeface.createFromAsset(mApplicationContext.getAssets(), mFontLocation);
+                    break;
             }
         }
 
-        // Now we have all the data we need.
-        // Draw everything.
-        draw();
     }
 
-    /**
-     * We need this to find out what dynamic size our view should be
-     */
     @Override
-    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
-        mWidth = widthMeasureSpec;
-        mHeight = heightMeasureSpec;
-        setMeasuredDimension(mWidth, mHeight);
-    }
-
-    /**
-     * Setup our paint and calculate glyph measurement for correct placement
-     */
-    private void setupImage() {
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        // Only measure these values when they have changed or when you have just been added to the
+        // view hierarchy
+        mWidth = w;
+        mHeight = h;
 
         // Grab mid points
         mMidX = mWidth / 2;
@@ -236,22 +267,23 @@ public class FontView extends View {
 
         // Try to maximize the glyph size within the region, taking into account user modification
         textSize = (int) (mHeight * mFontSizeMultiplier);
+    }
+
+    /**
+     * Setup our paint and calculate glyph measurement for correct placement
+     */
+    private void setupImage() {
 
         // Setup our glyph color
-        mForegroundPaint = new Paint();
         mForegroundPaint.setTextSize(textSize);
-        if (mForegroundColor != null)
-            mForegroundPaint.setColor(mForegroundColor);
-        else
-            mForegroundPaint.setColor(Color.BLACK);
+        if (mForegroundColor != null) mForegroundPaint.setColor(mForegroundColor);
+        else mForegroundPaint.setColor(Color.BLACK);
         mForegroundPaint.setAntiAlias(true);
         mForegroundPaint.setTypeface(mTypeFace);
-        Paint.FontMetrics metrics = new Paint.FontMetrics();
         mForegroundPaint.getFontMetrics(metrics);
 
         // Setup our glyph background
         if (mBackgroundColor != null) {
-            mBackgroundPaint = new Paint();
             mBackgroundPaint.setColor(mBackgroundColor);
             mBackgroundPaint.setAntiAlias(true);
         }
@@ -259,21 +291,18 @@ public class FontView extends View {
         // Sometimes there is a surrounding color which gives the appearance of clipping/shaping
         // This will be the background color for that region.
         if (mOuterColor != null) {
-            mOuterPaint = new Paint();
             mOuterPaint.setColor(mOuterColor);
             mOuterPaint.setAntiAlias(true);
         }
 
         // Sometimes there is a bottom half paint color
         if (mBottomHalfColor != null) {
-            mBottomHalfPaint = new Paint();
             mBottomHalfPaint.setColor(mBottomHalfColor);
             mBottomHalfPaint.setAntiAlias(true);
         }
 
         // Sometimes there is a gradient background
-        if (mBackgroundColor != null && mBottomHalfColor != null) {
-            mBackgroundGradientPaint = new Paint();
+        if (mHasBackgroundGradient && mBackgroundColor != null && mBottomHalfColor != null) {
             LinearGradient linearGradient = new LinearGradient(mMidX, TOP, mMidX, mHeight, mBackgroundColor, mBottomHalfColor,
                     Shader.TileMode.REPEAT);
             mBackgroundGradientPaint.setDither(false);
@@ -283,9 +312,9 @@ public class FontView extends View {
         // Sometimes, glyphs have extra padding. We want to take into account
         // the maximum padding available
         // Just in case no character was given...
-        if (mCharacter == null)
-            mCharacter = "";
-        int width = (int) mForegroundPaint.measureText(Html.fromHtml(mCharacter).toString());
+        if (mCharacter == null) mCharacter = "";
+
+        int width = (int) mForegroundPaint.measureText(mCharacter);
 
         // The width differential will be the starting x for drawing the glyph
         // This will be the center of the view offset by half of the glyph width
@@ -314,6 +343,13 @@ public class FontView extends View {
      * Draw the shapes and glyph
      */
     private void draw() {
+        // Only draw if the view is visible
+        if (!isShown()) {
+            return;
+        }
+
+        long startTime = System.currentTimeMillis();
+
         // Calculate glyph metrics we need
         setupImage();
 
@@ -326,20 +362,22 @@ public class FontView extends View {
             // Is the background a solid color?
             if (mBottomHalfColor == null) {
                 // Is there a background color?
-                if (mBackgroundColor != null)
-                    mExternalCanvas.drawColor(mBackgroundColor);
+                if (mBackgroundColor != null) mExternalCanvas.drawColor(mBackgroundColor);
 
             }
             // If the background is not a solid color...
             else {
                 // Is it a gradient?
                 if (mHasBackgroundGradient) {
-                    mExternalCanvas.drawRect(new Rect(LEFT, TOP, mWidth, mHeight), mBackgroundGradientPaint);
+                    if (squareRect == null) squareRect = new Rect(LEFT, TOP, mWidth, mHeight);
+                    mExternalCanvas.drawRect(squareRect, mBackgroundGradientPaint);
                 }
                 // Is it split (non-gradient)?
                 else {
-                    mExternalCanvas.drawRect(new Rect(LEFT, TOP, mWidth, mMidY), mBackgroundPaint);
-                    mExternalCanvas.drawRect(new Rect(LEFT, mMidY, mWidth, mHeight), mBottomHalfPaint);
+                    if (squareRectA == null) squareRectA = new Rect(LEFT, TOP, mWidth, mMidY);
+                    if (squareRectB == null) squareRectB = new Rect(LEFT, mMidY, mWidth, mHeight);
+                    mExternalCanvas.drawRect(squareRectA, mBackgroundPaint);
+                    mExternalCanvas.drawRect(squareRectB, mBottomHalfPaint);
                 }
             }
         }
@@ -347,13 +385,11 @@ public class FontView extends View {
         // Do the same for circles...
         if (mType == ImageType.CIRCLE) {
             // Is there a color outside the circle?
-            if (mOuterColor != null)
-                mExternalCanvas.drawColor(mOuterColor);
+            if (mOuterColor != null) mExternalCanvas.drawColor(mOuterColor);
             // Is the background a solid color?
             if (mBottomHalfColor == null) {
                 // Is there a background color?
-                if (mBackgroundColor != null)
-                    mExternalCanvas.drawCircle(mMidX, mMidY, mMidX, mBackgroundPaint);
+                if (mBackgroundColor != null) mExternalCanvas.drawCircle(mMidX, mMidY, mMidX, mBackgroundPaint);
                 // If the background is not a solid color...
             } else {
                 // Is it a gradient?
@@ -363,20 +399,48 @@ public class FontView extends View {
                 // Is it split(non-gradient)?
                 else {
                     // Draw the circle's top half
-                    // Use a divisibility offset because if the radius is odd, or rounded odd, there will be a non-drawn line between the two circle halves.
+                    // Use a divisibility offset because if the radius is odd, or rounded odd, there
+                    // will be a non-drawn line between the two circle halves.
                     final int divisibilityOffset = 2;
-                    mExternalCanvas.drawArc(new RectF(LEFT, TOP, mWidth, mHeight + divisibilityOffset), HALF_CIRCLE_TOP_START, HALF_CIRCLE_SWEEP_DISTANCE, true,
-                            mBackgroundPaint);
+                    if (circleRectA == null) circleRectA = new RectF(LEFT, TOP, mWidth, mHeight + divisibilityOffset);
+                    mExternalCanvas.drawArc(circleRectA, HALF_CIRCLE_TOP_START, HALF_CIRCLE_SWEEP_DISTANCE, true, mBackgroundPaint);
 
                     // Draw the circle's bottom half
-                    mExternalCanvas.drawArc(new RectF(LEFT, TOP, mWidth, mHeight), HALF_CIRCLE_BOTTOM_START, HALF_CIRCLE_SWEEP_DISTANCE,
-                            true, mBottomHalfPaint);
+                    if (circleRectB == null) {
+                        circleRectB = new RectF(LEFT, TOP, mWidth, mHeight);
+                    }
+                    mExternalCanvas.drawArc(circleRectB, HALF_CIRCLE_BOTTOM_START, HALF_CIRCLE_SWEEP_DISTANCE, true, mBottomHalfPaint);
                 }
             }
         }
 
         // Draw the glyph
-        mExternalCanvas.drawText(Html.fromHtml(mCharacter).toString(), mWidthDifferential, mHeightDifferential, mForegroundPaint);
+        mExternalCanvas.drawText(mCharacter, mWidthDifferential, mHeightDifferential, mForegroundPaint);
+
+        long endTime = System.currentTimeMillis();
+
+        // Draw debug indicators if requested
+        if (mDebugEnabled) {
+            mDebugPaint.setStyle(Paint.Style.FILL);
+            long drawTime = endTime - startTime;
+            if (drawTime <= 3) mDebugPaint.setColor(Color.GREEN);
+            else if (drawTime <= 5) mDebugPaint.setColor(Color.YELLOW);
+            else {
+                mDebugPaint.setColor(Color.RED);
+            }
+
+            if (mDebugEnabled) Log.d(this.getClass().getName(), "Font character " + mCharacter + " took " + drawTime + "ms.");
+
+            mDebugPaint.setAntiAlias(true);
+
+            Path path = new Path();
+            path.setFillType(Path.FillType.EVEN_ODD);
+            path.lineTo(mDebugIndicatorWidth * mDisplayMetrics.density, 0);
+            path.lineTo(0, mDebugIndicatorWidth * mDisplayMetrics.density);
+            path.close();
+
+            mExternalCanvas.drawPath(path, mDebugPaint);
+        }
     }
 
     // Convenience classes for tracking mutable attributes
@@ -391,7 +455,7 @@ public class FontView extends View {
     /**
      * A convenience method for creating local font file names that are pulled from a network
      * connection while allowing the user to use multiple fonts at once
-     * 
+     *
      * @param stringToHash
      * @return
      */
@@ -417,7 +481,7 @@ public class FontView extends View {
 
     /**
      * Fine tune glyph placement on the x-axis
-     * 
+     *
      * @param xOffset
      * @return fontView
      */
@@ -428,7 +492,7 @@ public class FontView extends View {
 
     /**
      * Fine tune glyph placement on the y-axis
-     * 
+     *
      * @param yOffset
      * @return fontView
      */
@@ -439,9 +503,8 @@ public class FontView extends View {
 
     /**
      * Fine tune the font size
-     * 
-     * @param fontSizeMultiplier
-     *            (1.1=10% bigger, 0.9=10% smaller)
+     *
+     * @param fontSizeMultiplier (1.1=10% bigger, 0.9=10% smaller)
      * @return fontView
      */
     public FontView setFontSizeMultiplier(double fontSizeMultiplier) {
@@ -451,7 +514,7 @@ public class FontView extends View {
 
     /**
      * Adds a background color behind the character.
-     * 
+     *
      * @param backgroundColor
      * @return fontView
      */
@@ -462,7 +525,7 @@ public class FontView extends View {
 
     /**
      * Adds a foreground (character) color
-     * 
+     *
      * @param foregroundColor
      * @return fontView
      */
@@ -475,7 +538,7 @@ public class FontView extends View {
      * Adds an outer color, used behind shapes like circles where the circle background color only
      * resides in the circle. The outerColor is the rest of the square that circumscribes the
      * circle.
-     * 
+     *
      * @param outerColor
      * @return fontView
      */
@@ -488,7 +551,7 @@ public class FontView extends View {
      * Adds a color to the bottom half of the shapes background. Is usually used in conjunction with
      * setting a background color. Also used to set the second color when turning on a gradient
      * background.
-     * 
+     *
      * @param halfColor
      * @return fontView
      */
@@ -500,7 +563,7 @@ public class FontView extends View {
     /**
      * Makes the background behind the character a gradient. The gradient is based on two colors:
      * background and bottomHalfColor
-     * 
+     *
      * @param mHasBackgroundGradient
      * @return fontView
      */

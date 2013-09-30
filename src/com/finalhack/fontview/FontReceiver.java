@@ -9,22 +9,22 @@ import android.os.ResultReceiver;
  */
 public class FontReceiver extends ResultReceiver {
 
-	private FontView mCallback;
+    private FontView mCallback;
 
-	public FontReceiver(Handler handler, FontView callback) {
-		super(handler);
-		mCallback = callback;
-	}
+    public FontReceiver(Handler handler, FontView callback) {
+        super(handler);
+        mCallback = callback;
+    }
 
-	@Override
-	protected void onReceiveResult(int resultCode, Bundle resultData) {
-		// If we've left the view, squelch any errors
-		// The callback could
-		try {
-			mCallback.internalUpdate();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+    @Override
+    protected void onReceiveResult(int resultCode, Bundle resultData) {
+        // If we've left the view, squelch any errors
+        // The callback could
+        try {
+            mCallback.internalUpdate();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
 }
